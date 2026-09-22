@@ -15,6 +15,7 @@
 package root
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -26,23 +27,35 @@ import (
 	"gvisor.dev/gvisor/runsc/specutils"
 )
 
-// TestMain is the main function for root tests. This function checks the
-// supported docker version, required capabilities, and configures the executable
-// path for runsc.
+// TestMain is the main function for root tests.
 func TestMain(m *testing.M) {
 	config.RegisterFlags(flag.CommandLine)
 	if !flag.CommandLine.Parsed() {
 		flag.Parse()
 	}
 
+	if useHarness() {
+		dockerutil.EnsureSupportedDockerVersion()
+		code := runInHarness(context.Background())
+		if code == 0 {
+			if f := os.Getenv("TEST_PREMATURE_EXIT_FILE"); f != "" {
+				_ = os.Remove(f)
+			}
+		}
+		os.Exit(code)
+	}
+
 	if !specutils.HasCapabilities(capability.CAP_SYS_ADMIN, capability.CAP_DAC_OVERRIDE) {
-		fmt.Println("Test requires sysadmin privileges to run. Try again with sudo.")
+		fmt.Println("Test requires sysadmin privileges to run. Try again with sudo, or use the harness.")
 		os.Exit(1)
 	}
 
-	dockerutil.EnsureSupportedDockerVersion()
+	// If we get here, we do not need to call the harness, which means we are either running in a
+	// harness docker container or running directly against a host containerd.
+	if !inHarness() {
+		dockerutil.EnsureSupportedDockerVersion()
+	}
 
-	// Configure exe for tests.
 	path, err := dockerutil.RuntimePath()
 	if err != nil {
 		panic(err.Error())

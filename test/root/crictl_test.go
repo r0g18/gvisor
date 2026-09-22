@@ -565,8 +565,9 @@ grouping = ` + strconv.FormatBool(enableGrouping) + `
 	}()
 	cu.Add(func() {
 		wg.Wait()
-		t.Logf("containerd stdout: %s", stdout.String())
-		t.Logf("containerd stderr: %s", stderr.String())
+		_ = os.MkdirAll("/tmp/shim-logs", 0755)
+		logFile := fmt.Sprintf("/tmp/shim-logs/containerd-%s.log", strings.ReplaceAll(t.Name(), "/", "_"))
+		_ = os.WriteFile(logFile, stderr.Bytes(), 0644)
 	})
 
 	// Start the process.

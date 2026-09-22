@@ -549,21 +549,14 @@ install_containerd = \
 	sudo -H "PATH=$$PATH" $$T/install_containerd.sh $(1); \
 	rm -rf $$T)
 
-# Specific containerd version tests.
-containerd-test-%: load-basic_alpine load-basic_python load-basic_busybox load-basic_symlink-resolv load-basic_httpd load-basic_ubuntu $(RUNTIME_BIN)
-	@$(call install_runtime,$(RUNTIME),) # Clear flags.
-	@$(call install_containerd,$*)
-ifeq (,$(STAGED_BINARIES))
-	@sudo cp -fa "$(RUNTIME_DIR)"/* "$$(dirname $$(which containerd))/"
-else
-	@gcloud storage cat "$(STAGED_BINARIES)" | \
-		sudo tar -C "$$(dirname $$(which containerd))" -zxvf -
-endif
-	@$(call sudo,test/root:root_test,--runtime=$(RUNTIME) -test.v)
+containerd-test-%: load-containerd_harness load-basic_alpine load-basic_python load-basic_busybox load-basic_symlink-resolv load-basic_httpd load-basic_ubuntu
+	@$(call test_runtime,$(RUNTIME),--test_output=streamed --test_arg=-test.v --test_arg=--containerd_version=$* $(ARGS) -- //test/root:crictl_test)
 containerd-tests-min: containerd-test-1.7.31
+containerd-tests: containerd-test-1.7.31 containerd-test-2.0.8 containerd-test-2.1.7 containerd-test-2.2.3
+.PHONY: containerd-test-% containerd-tests-min containerd-tests
 
 containerd-performance-test-%:
-	@export RUN_SHIM_GROUPING_PERFORMANCE_TEST=true; $(MAKE) containerd-test-$*
+	@$(call test_runtime,$(RUNTIME),--test_output=streamed --test_arg=-test.v --test_arg=--containerd_version=$* --test_env=RUN_SHIM_GROUPING_PERFORMANCE_TEST=true $(ARGS) -- //test/root:crictl_test)
 .PHONY: containerd-performance-test-%
 
 
