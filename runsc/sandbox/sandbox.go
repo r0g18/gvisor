@@ -966,7 +966,7 @@ func (s *Sandbox) createSandboxProcess(conf *config.Config, args *Args, startSyn
 	lfOpts.Command = "boot" // Revert command to "boot".
 
 	sentryBin := &gvisorbinaries.GvisorSentry
-	sentryUsesCgo := false
+	sentryUsesCgo := config.CgoEnabled
 	if conf.Network == config.NetworkPlugin {
 		sentryBin = &gvisorbinaries.GvisorSentryPluginStack
 		sentryUsesCgo = true
